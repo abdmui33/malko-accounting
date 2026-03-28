@@ -230,7 +230,7 @@ function QuotationModule({settings,onNavigate}) {
   const printQ=(q)=>{
     const items=q.items||[];const {subtotal,discountAmt,taxAmt,total}=calcDoc(items,q.discount,q.tax_rate);
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
-    printDoc(docHeader(settings,"QUOTATION",q.doc_no,q.date,null,q.client,q.attn,q.address,`<div style="margin-top:8px"><span class="meta-label">Status </span><span class="meta-value">${q.status||"Draft"}</span></div>`)+
+    printDoc(docHeader(settings,"QUOTATION",q.doc_no,q.date,null,q.client,q.attn,q.address,"")+
       `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,q.tax_rate,total)+
       (q.notes?`<div class="note-box"><strong>Notes:</strong> ${q.notes}</div>`:"")+
@@ -288,8 +288,9 @@ function InvoiceModule({settings}) {
     return()=>window.removeEventListener("navigate_to_invoice",handler);
   },[]);
 
-  const openNew=()=>{setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),client:"",attn:"",address:"",date:today(),due_date:"",status:"Draft",ref_quo:"",notes:"",terms:settings.terms_inv||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
-  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
+  const computeDueDate=(base,terms)=>{if(!base||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);};
+  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:settings.terms_inv||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
+  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
   const save_=async()=>{
     if(editId){await dbUpdate("invoices",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
     else{const ins=await dbInsert("invoices",doc);if(ins)setRows([ins,...rows]);}
@@ -302,7 +303,7 @@ function InvoiceModule({settings}) {
     const items=inv.items||[];const {subtotal,discountAmt,taxAmt,total}=calcDoc(items,inv.discount,inv.tax_rate);
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
     printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,inv.due_date,inv.client,inv.attn,inv.address,
-      `<div style="margin-top:6px"><span class="${statusBadgeClass(inv.status)}">${inv.status}</span></div>${inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:""}`)+
+      `${inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:""}`)+
       `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+
       (inv.notes?`<div class="note-box"><strong>Notes:</strong> ${inv.notes}</div>`:"")+
@@ -312,7 +313,7 @@ function InvoiceModule({settings}) {
   };
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date (auto-calculated)",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
@@ -427,7 +428,7 @@ function SupplierModule({settings}) {
     <div style={css.card}>
       <div style={css.grid2}>
         {[{key:"doc_no",label:"Voucher No."},{key:"supplier",label:"Supplier Name"},{key:"invoice_ref",label:"Supplier Invoice Ref"},{key:"description",label:"Description"},{key:"date",label:"Date",type:"date"},{key:"due_date",label:"Due Date",type:"date"},{key:"amount",label:"Amount (RM)",type:"number"}].map(f=>(
-          <div key={f.key}><label style={css.label}>{f.label}</label><input style={css.input} type={f.type||"text"} value={doc[f.key]??""} onChange={e=>setDoc(d=>({...d,[f.key]:e.target.value}))}/></div>
+          <div key={f.key}><label style={css.label}>{f.label}</label><input style={css.input} type={f.type||"text"} value={doc[f.key]??""} onChange={e=>{const v=e.target.value;setDoc(d=>{const u={...d,[f.key]:v};if(f.key==="date"&&d.payment_terms_days&&d.payment_terms_days!=="Custom"){const dd=new Date(v);dd.setDate(dd.getDate()+parseInt(d.payment_terms_days));u.due_date=dd.toISOString().slice(0,10);}return u;});}}/></div>
         ))}
         <div><label style={css.label}>Payment Method</label><select style={css.input} value={doc.method} onChange={e=>setDoc(d=>({...d,method:e.target.value}))}>
           {["Bank Transfer","Cash","Cheque","Online Transfer","Credit Card"].map(o=><option key={o}>{o}</option>)}
@@ -753,7 +754,7 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
         {fields.map(f=>(
           <div key={f.key} style={(f.key==="address"||f.key==="terms"||f.key==="notes")?{gridColumn:"1 / -1"}:{}}>
             <label style={css.label}>{f.label}</label>
-            {f.type==="select"?<select style={css.input} value={doc[f.key]||""} onChange={e=>setDoc(d=>({...d,[f.key]:e.target.value}))}>{f.options.map(o=><option key={o}>{o}</option>)}</select>
+            {f.type==="select"?<select style={css.input} value={doc[f.key]||""} onChange={e=>{const v=e.target.value;setDoc(d=>{const u={...d,[f.key]:v};if(f.key==="payment_terms_days"&&v!=="Custom"&&d.date){const dd=new Date(d.date);dd.setDate(dd.getDate()+parseInt(v));u.due_date=dd.toISOString().slice(0,10);}return u;})}}>{f.options.map(o=><option key={o}>{o}</option>)}</select>
             :f.type==="textarea"?<textarea style={{...css.input,height:80,resize:"vertical",fontFamily:"inherit"}} value={doc[f.key]??""} onChange={e=>setDoc(d=>({...d,[f.key]:e.target.value}))}/>
             :<input style={css.input} type={f.type||"text"} value={doc[f.key]??""} onChange={e=>setDoc(d=>({...d,[f.key]:e.target.value}))}/> }
           </div>
@@ -766,8 +767,8 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
         <table style={{...css.table,minWidth:600,marginBottom:12}}>
           <thead><tr>
             <th style={css.th}>Description</th><th style={{...css.th,width:80}}>Qty</th>
-            <th style={{...css.th,width:100}}>Unit</th><th style={{...css.th,width:130}}>Price (RM)</th>
-            <th style={{...css.th,width:130}}>Amount</th><th style={{...css.th,width:40}}></th>
+            <th style={{...css.th,width:100}}>Unit</th><th style={{...css.th,width:130,textAlign:"right"}}>Unit Price (RM)</th>
+            <th style={{...css.th,width:130,textAlign:"right"}}>Amount (RM)</th><th style={{...css.th,width:40}}></th>
           </tr></thead>
           <tbody>{(doc.items||[]).map(item=>(
             <tr key={item.id}>
@@ -775,7 +776,7 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
               <td style={css.td}><input style={{...css.input,textAlign:"right"}} type="number" min="0" value={item.qty??1} onChange={e=>updItem(item.id,"qty",e.target.value)}/></td>
               <td style={css.td}><input style={css.input} value={item.unit??""} onChange={e=>updItem(item.id,"unit",e.target.value)}/></td>
               <td style={css.td}><input style={{...css.input,textAlign:"right"}} type="number" min="0" value={item.price??0} onChange={e=>updItem(item.id,"price",e.target.value)}/></td>
-              <td style={{...css.td,fontWeight:700,color:C.gold}}>{fmtMY(nf(item.qty)*nf(item.price))}</td>
+              <td style={{...css.td,fontWeight:700,color:C.gold,textAlign:"right"}}>{(nf(item.qty)*nf(item.price)).toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
               <td style={css.td}><button style={{...mkBtn("danger"),padding:"4px 10px",opacity:(doc.items||[]).length<=1?0.3:1}} onClick={()=>remItem(item.id)}>✕</button></td>
             </tr>
           ))}</tbody>
@@ -938,6 +939,7 @@ export default function App() {
   if(noEnv) return <SetupScreen/>;
 
   return(<div style={css.app}>
+    <style>{`input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webkit-calendar-picker-indicator{filter:invert(1);cursor:pointer;opacity:0.8;}`}</style>
     <div style={css.sidebar}>
       <div style={css.sideHeader}><div style={css.sideTitle}>Malko Acc</div><div style={css.sideSub}>Business Manager</div></div>
       {NAV.map(n=>(
