@@ -258,6 +258,7 @@ function QuotationModule({settings,onNavigate}) {
             <td style={css.td}><span style={css.badge(QSC[q.status]||C.muted)}>{q.status||"Draft"}</span></td>
             <td style={css.td}><strong>{fmtMY(calcDoc(q.items,q.discount,q.tax_rate).total)}</strong></td>
             <td style={css.td}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:QSC[q.status]||"#7070a0"}} value={q.status||"Draft"} onChange={e=>{const s=e.target.value;dbUpdate("quotations",q.id,{status:s});setRows(rows.map(r=>r.id===q.id?{...r,status:s}:r));}}>{["Draft","Sent","Received"].map(s=><option key={s}>{s}</option>)}</select>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(q)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printQ(q)}>🖨 PDF</button>
               <button style={{...mkBtn("accent"),padding:"5px 10px",fontSize:11}} onClick={()=>convertToInvoice(q)}>→ INV</button>
@@ -302,8 +303,8 @@ function InvoiceModule({settings}) {
   const printI=(inv)=>{
     const items=inv.items||[];const {subtotal,discountAmt,taxAmt,total}=calcDoc(items,inv.discount,inv.tax_rate);
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
-    printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,inv.due_date,inv.client,inv.attn,inv.address,
-      `${inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:""}`)+
+    printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,inv.due_date||inv.payment_terms_days,inv.client,inv.attn,inv.address,
+      `${inv.due_date?`<div style="margin-top:4px"><span class="meta-label">Due Date </span><span class="meta-value" style="font-weight:800">${new Date(inv.due_date).toLocaleDateString("en-MY",{day:"2-digit",month:"short",year:"numeric"})}</span></div>":""}${inv.payment_terms_days?`<div style="margin-top:2px"><span class="meta-label">Terms </span><span class="meta-value">${inv.payment_terms_days}</span></div>":""}${inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>":""}` + "`")+
       `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+
       (inv.notes?`<div class="note-box"><strong>Notes:</strong> ${inv.notes}</div>`:"")+
@@ -315,24 +316,46 @@ function InvoiceModule({settings}) {
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
     fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date (auto-calculated)",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
+  const [fClient,setFClient]=useState("");const [fStatus,setFStatus]=useState("");const [fMonth,setFMonth]=useState("");
+  const calcT=(inv)=>calcDoc(inv.items,inv.discount,inv.tax_rate).total;
+  const filtered=rows.filter(inv=>{if(fClient&&inv.client!==fClient)return false;if(fStatus&&inv.status!==fStatus)return false;if(fMonth&&!(inv.date||"").startsWith(fMonth))return false;return true;});
+  const fTotal=filtered.reduce((s,inv)=>s+calcT(inv),0);
+  const clientList=[...new Set(rows.map(r=>r.client).filter(Boolean))].sort();
+  const monthList=[...new Set(rows.map(r=>(r.date||"").slice(0,7)).filter(Boolean))].sort().reverse();
+  const hasFilter=fClient||fStatus||fMonth;
   return(<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
       <div><div style={css.pageTitle}>Invoices</div><div style={css.pageSub}>{rows.length} document{rows.length!==1?"s":""}</div></div>
       <button style={mkBtn("gold")} onClick={openNew}>+ New Invoice</button>
     </div>
+    <div style={{...css.card,marginBottom:12,padding:"16px 20px"}}>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div style={{flex:"1 1 180px"}}><label style={css.label}>Company</label><select style={css.input} value={fClient} onChange={e=>setFClient(e.target.value)}><option value="">All Companies</option>{clientList.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+        <div style={{flex:"1 1 130px"}}><label style={css.label}>Month</label><select style={css.input} value={fMonth} onChange={e=>setFMonth(e.target.value)}><option value="">All Months</option>{monthList.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+        <div style={{flex:"1 1 130px"}}><label style={css.label}>Status</label><select style={css.input} value={fStatus} onChange={e=>setFStatus(e.target.value)}><option value="">All Statuses</option>{["Draft","Sent","Pending","Paid","Overdue"].map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+        {hasFilter&&<button style={{...mkBtn("ghost"),padding:"8px 16px",alignSelf:"flex-end"}} onClick={()=>{setFClient("");setFStatus("");setFMonth("");}}>✕ Clear</button>}
+      </div>
+      {hasFilter&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #2a2a45",display:"flex",gap:24,flexWrap:"wrap",alignItems:"center"}}>
+        <div><span style={{fontSize:11,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Showing </span><span style={{fontWeight:700,color:C.text}}>{filtered.length} invoice{filtered.length!==1?"s":""}</span></div>
+        <div><span style={{fontSize:11,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Total </span><span style={{fontWeight:800,color:C.gold,fontSize:16}}>{fmtMY(fTotal)}</span></div>
+        {fClient&&<span style={css.badge(C.accent)}>{fClient}</span>}
+        {fStatus&&<span style={css.badge(ISC[fStatus]||C.muted)}>{fStatus}</span>}
+        {fMonth&&<span style={css.badge(C.muted)}>{fMonth}</span>}
+      </div>}
+    </div>
     <div style={css.card}>
-      {loading?<Spinner/>:rows.length===0?<Empty text="No invoices yet"/>:(
+      {loading?<Spinner/>:rows.length===0?<Empty text="No invoices yet"/>:filtered.length===0?<Empty text="No invoices match filters"/>:(
         <div style={{overflowX:"auto"}}><table style={css.table}>
           <thead><tr>{["No.","Client","Date","Due","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
-          <tbody>{rows.map(inv=><tr key={inv.id}>
+          <tbody>{filtered.map(inv=><tr key={inv.id}>
             <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{inv.doc_no}</span>{inv.ref_quo&&<div style={{fontSize:10,color:C.muted}}>ref: {inv.ref_quo}</div>}</td>
             <td style={css.td}><div>{inv.client}</div>{inv.attn&&<div style={{fontSize:11,color:C.muted}}>👤 {inv.attn}</div>}</td>
             <td style={css.td}>{fmtDate(inv.date)}</td><td style={css.td}>{fmtDate(inv.due_date)}</td>
             <td style={css.td}><span style={css.badge(ISC[inv.status]||C.muted)}>{inv.status}</span></td>
             <td style={css.td}><strong>{fmtMY(calcDoc(inv.items,inv.discount,inv.tax_rate).total)}</strong></td>
             <td style={css.td}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>toggleStatus(inv)}>{inv.status==="Paid"?"Unpaid":"✓ Paid"}</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(inv)}>Edit</button>
+              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:ISC[inv.status]||"#7070a0"}} value={inv.status} onChange={e=>{const s=e.target.value;dbUpdate("invoices",inv.id,{status:s});setRows(rows.map(r=>r.id===inv.id?{...r,status:s}:r));}}>{["Draft","Sent","Pending","Paid","Overdue"].map(s=><option key={s}>{s}</option>)}</select>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printI(inv)}>🖨 PDF</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(inv.id)}>✕</button>
             </div></td>
