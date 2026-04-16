@@ -334,10 +334,18 @@ function InvoiceModule({settings}) {
     setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});
     setEditId(r.id);setForm(true);
   };
-  const save_=async()=>{
-    if(editId){await dbUpdate("invoices",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
-    else{const ins=await dbInsert("invoices",doc);if(ins)setRows([ins,...rows]);}
-    setForm(false);
+const save_ = async () => {
+  if (editId) {
+    await dbUpdate("invoices", editId, doc);
+    setRows(rows.map(r => r.id === editId ? { ...doc, id: editId } : r));
+  } else {
+    // CLONE the doc and remove the temporary client-side ID
+    const { id, ...newDoc } = doc; 
+    const ins = await dbInsert("invoices", newDoc); 
+    if (ins) setRows([ins, ...rows]);
+  }
+  setForm(false);
+};
   };
   const del=async(id)=>{if(!window.confirm("Delete this invoice?"))return;await dbDelete("invoices",id);setRows(rows.filter(r=>r.id!==id));};
 
