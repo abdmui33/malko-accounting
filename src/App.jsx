@@ -344,7 +344,7 @@ function InvoiceModule({settings}) {
       </div>}
     </div>
     <div style={css.card}>
-      {loading?<Spinner/>:rows.length===0?<Empty text="No invoices yet"/>:filtered.length===0?<Empty text="No invoices match filters"/>:(
+      {loading?<Spinner/>:rows.length===0?<Empty text="No invoices yet"/>:filtered.length===0?<Empty text="No invoices match filters"/>:filtered.length===0?<Empty text="No invoices match filters"/>:(
         <div style={{overflowX:"auto"}}><table style={css.table}>
           <thead><tr>{["No.","Client","Date","Due","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
           <tbody>{filtered.map(inv=><tr key={inv.id}>
