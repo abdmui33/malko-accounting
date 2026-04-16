@@ -301,6 +301,104 @@ function DocForm({ doc, setDoc, title, onSave, onCancel, newItem, fields, showDi
     </div>
   );
 }
+
+function DocForm({ doc, setDoc, title, onSave, onCancel, newItem, fields, showDiscountTax }) {
+  const { subtotal, discountAmt, taxAmt, total } = calcDoc(doc.items, doc.discount, doc.tax_rate);
+
+  const updateItem = (id, key, val) => {
+    setDoc(d => ({
+      ...d,
+      items: (d.items || []).map(i => i.id === id ? { ...i, [key]: val } : i)
+    }));
+  };
+
+  const addItem = () => setDoc(d => ({ ...d, items: [...(d.items || []), newItem()] }));
+  const removeItem = (id) => setDoc(d => ({ ...d, items: d.items.filter(i => i.id !== id) }));
+
+  return (
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={css.pageTitle}>{title}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={mkBtn("gold")} onClick={onSave}>Save Document</button>
+          <button style={mkBtn("ghost")} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+
+      <div style={css.grid2}>
+        <div style={css.card}>
+          <ClientSelect doc={doc} setDoc={setDoc} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {fields.map(f => (
+              <div key={f.key} style={{ gridColumn: f.type === "textarea" ? "1/-1" : "auto" }}>
+                <label style={css.label}>{f.label}</label>
+                {f.type === "select" ? (
+                  <select style={css.input} value={doc[f.key] || ""} onChange={e => setDoc({ ...doc, [f.key]: e.target.value })}>
+                    {(f.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : f.type === "textarea" ? (
+                  <textarea style={{ ...css.input, height: 80 }} value={doc[f.key] || ""} onChange={e => setDoc({ ...doc, [f.key]: e.target.value })} />
+                ) : (
+                  <input type={f.type || "text"} style={css.input} value={doc[f.key] || ""} onChange={e => setDoc({ ...doc, [f.key]: e.target.value })} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={css.card}>
+          <div style={css.label}>Totals & Summary</div>
+          <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span>Subtotal</span><span>{fmtMY(subtotal)}</span></div>
+            {showDiscountTax && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 10 }}>
+                  <label style={css.label}>Discount (Flat)</label>
+                  <input style={css.input} type="number" value={doc.discount || 0} onChange={e => setDoc({ ...doc, discount: nf(e.target.value) })} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 10 }}>
+                  <label style={css.label}>Tax Rate (%)</label>
+                  <input style={css.input} type="number" value={doc.tax_rate || 0} onChange={e => setDoc({ ...doc, tax_rate: nf(e.target.value) })} />
+                </div>
+              </>
+            )}
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, marginTop: 10, display: "flex", justifyContent: "space-between", fontWeight: 800, color: C.gold, fontSize: 18 }}>
+              <span>Total Amount</span><span>{fmtMY(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={css.card}>
+        <table style={css.table}>
+          <thead>
+            <tr>
+              <th style={{ ...css.th, width: "40%" }}>Description</th>
+              <th style={css.th}>Qty</th>
+              <th style={css.th}>Unit</th>
+              <th style={css.th}>Price</th>
+              <th style={css.th}>Amount</th>
+              <th style={css.th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(doc.items || []).map(item => (
+              <tr key={item.id}>
+                <td style={css.td}><input style={css.input} value={item.desc} onChange={e => updateItem(item.id, "desc", e.target.value)} /></td>
+                <td style={css.td}><input style={css.input} type="number" value={item.qty} onChange={e => updateItem(item.id, "qty", e.target.value)} /></td>
+                <td style={css.td}><input style={css.input} value={item.unit} onChange={e => updateItem(item.id, "unit", e.target.value)} /></td>
+                <td style={css.td}><input style={css.input} type="number" value={item.price} onChange={e => updateItem(item.id, "price", e.target.value)} /></td>
+                <td style={css.td}>{fmtMY(nf(item.qty) * nf(item.price))}</td>
+                <td style={css.td}><button style={{ ...mkBtn("danger"), padding: "5px 10px" }} onClick={() => removeItem(item.id)}>✕</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button style={{ ...mkBtn("ghost"), marginTop: 15 }} onClick={addItem}>+ Add Line Item</button>
+      </div>
+    </div>
+  );
+}
 // ─── QUOTATIONS ───────────────────────────────────────────────────────────────
 function QuotationModule({settings,onNavigate}) {
   const [rows,setRows]=useState([]);const [loading,setLoading]=useState(true);
