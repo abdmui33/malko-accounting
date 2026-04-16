@@ -275,9 +275,6 @@ function InvoiceModule({settings}) {
   const [rows,setRows]=useState([]);const [loading,setLoading]=useState(true);
   const [form,setForm]=useState(false);const [editId,setEditId]=useState(null);const [doc,setDoc]=useState(null);
   const newItem=()=>({id:uid(),desc:"",qty:1,unit:"unit",price:0});
-  const [fClient,setFClient]=useState("");
-  const [fStatus,setFStatus]=useState("");
-  const [fMonth,setFMonth]=useState("");
 
   useEffect(()=>{
     dbLoad("invoices").then(d=>{setRows(d);setLoading(false);});
