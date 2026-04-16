@@ -303,8 +303,15 @@ function DocForm({ doc, setDoc, title, onSave, onCancel, newItem, fields, showDi
 }
 // ─── QUOTATIONS ───────────────────────────────────────────────────────────────
 function QuotationModule({settings,onNavigate}) {
-  const [rows,setRows]=useState([]);const [loading,setLoading]=useState(true);
-  const [form,setForm]=useState(false);const [editId,setEditId]=useState(null);const [doc,setDoc]=useState(null);
+  const [rows,setRows]=useState([]);
+const [loading,setLoading]=useState(true);
+const [form,setForm]=useState(false);
+const [editId,setEditId]=useState(null);
+const [doc,setDoc]=useState(null);
+
+const [fClient,setFClient]=useState("");
+const [fStatus,setFStatus]=useState("");
+const [fMonth,setFMonth]=useState("");;const [doc,setDoc]=useState(null);
   const newItem=()=>({id:uid(),desc:"",qty:1,unit:"unit",price:0});   const [fClient,setFClient]=useState("");   const [fStatus,setFStatus]=useState("");   useEffect(()=>{dbLoad("quotations").then(d=>{setRows(d);setLoading(false);});},[] );
 
   const openNew=()=>{setDoc({doc_no:rows.length===0?NEXT_QUO:nextDocNo("QUO-",rows),client:"",attn:"",address:"",date:today(),valid_until:"",status:"Draft",notes:"",terms:settings.terms_quo||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
@@ -423,7 +430,6 @@ function InvoiceModule({settings}) {
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
     fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date (auto-calculated)",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
-  const [fClient,setFClient]=useState("");const [fStatus,setFStatus]=useState("");const [fMonth,setFMonth]=useState("");
   const calcT=(inv)=>calcDoc(inv.items,inv.discount,inv.tax_rate).total;
   const filtered=rows.filter(inv=>{if(fClient&&inv.client!==fClient)return false;if(fStatus&&inv.status!==fStatus)return false;if(fMonth&&!(inv.date||"").startsWith(fMonth))return false;return true;});
   const fTotal=filtered.reduce((s,inv)=>s+calcT(inv),0);
