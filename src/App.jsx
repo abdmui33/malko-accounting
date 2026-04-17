@@ -289,13 +289,11 @@ function QuotationModule({settings,onNavigate}) {
 
 // ─── INVOICES ─────────────────────────────────────────────────────────────────
 function InvoiceModule({settings}) {
-  // ALL hooks at the top — no exceptions
   const [rows,setRows]=useState([]);
   const [loading,setLoading]=useState(true);
   const [form,setForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [doc,setDoc]=useState(null);
-  // Filter hooks — MUST be here before any early return
   const [fClient,setFClient]=useState("");
   const [fStatus,setFStatus]=useState("");
   const [fMonth,setFMonth]=useState("");
@@ -306,84 +304,48 @@ function InvoiceModule({settings}) {
     dbLoad("invoices").then(d=>{setRows(d);setLoading(false);});
     const handler=()=>{
       const raw=sessionStorage.getItem("prefill_invoice");
-      if(raw){try{
-        const data=JSON.parse(raw);
-        dbLoad("invoices").then(existing=>{
-          data.doc_no=existing.length===0?NEXT_INV:nextDocNo("INV-",existing);
-          setDoc({discount:0,tax_rate:0,payment_terms_days:"30 days",...data});
-          setEditId(null);setForm(true);
-          sessionStorage.removeItem("prefill_invoice");
-        });
+      if(raw){try{const data=JSON.parse(raw);
+        dbLoad("invoices").then(existing=>{data.doc_no=existing.length===0?NEXT_INV:nextDocNo("INV-",existing);setDoc({discount:0,tax_rate:0,payment_terms_days:"30 days",...data});setEditId(null);setForm(true);sessionStorage.removeItem("prefill_invoice");});
       }catch(e){console.error(e);}}
     };
     window.addEventListener("navigate_to_invoice",handler);
     return()=>window.removeEventListener("navigate_to_invoice",handler);
   },[]);
 
-  const computeDueDate=(base,terms)=>{
-    try{if(!base||!terms||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);}
-    catch(e){return"";}
-  };
+  const computeDueDate=(base,terms)=>{try{if(!base||!terms||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);}catch(e){return"";}};
 
-  const openNew=()=>{
-    const base=today();
-    setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});
-    setEditId(null);setForm(true);
-  };
-  const openEdit=(r)=>{
-    setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});
-    setEditId(r.id);setForm(true);
-  };
-const save_ = async () => {
-  if (editId) {
-    await dbUpdate("invoices", editId, doc);
-    setRows(rows.map(r => r.id === editId ? { ...doc, id: editId } : r));
-  } else {
-    // CLONE the doc and remove the temporary client-side ID
-    const { id, ...newDoc } = doc; 
-    const ins = await dbInsert("invoices", newDoc); 
-    if (ins) setRows([ins, ...rows]);
-  }
-  setForm(false);
-};
+  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
+  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
+  const save_=async()=>{
+    if(editId){await dbUpdate("invoices",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
+    else{const ins=await dbInsert("invoices",doc);if(ins)setRows([ins,...rows]);}
+    setForm(false);
   };
   const del=async(id)=>{if(!window.confirm("Delete this invoice?"))return;await dbDelete("invoices",id);setRows(rows.filter(r=>r.id!==id));};
 
   const printI=(inv)=>{
-    const items=inv.items||[];
-    const {subtotal,discountAmt,taxAmt,total}=calcDoc(items,inv.discount,inv.tax_rate);
+    const items=inv.items||[];const {subtotal,discountAmt,taxAmt,total}=calcDoc(items,inv.discount,inv.tax_rate);
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
     const resolvedDue=inv.due_date||computeDueDate(inv.date,inv.payment_terms_days);
-    const extraMeta=(inv.payment_terms_days?`<div style="margin-top:4px"><span class="meta-label">Payment Terms </span><span class="meta-value">${inv.payment_terms_days}</span></div>`:"")+
-      (inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:"");
-    printDoc(
-      docHeader(settings,"INVOICE",inv.doc_no,inv.date,resolvedDue,inv.client,inv.attn,inv.address,extraMeta)+
+    const extraMeta=(inv.payment_terms_days?`<div style="margin-top:4px"><span class="meta-label">Payment Terms </span><span class="meta-value">${inv.payment_terms_days}</span></div>`:"")+(inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:"");
+    printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,resolvedDue,inv.client,inv.attn||"",inv.address||"",extraMeta)+
       `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+
       (inv.notes?`<div class="note-box"><strong>Notes:</strong> ${inv.notes}</div>`:"")+
       (inv.terms?`<div class="note-box"><strong>Terms & Conditions:</strong><br/>${inv.terms.replace(/\n/g,"<br/>")}</div>`:"")+
       `<div class="note-box"><strong>Payment Details</strong><br/>${((settings&&settings.payment_terms)||("Bank: "+((settings&&settings.bankName)||"")+"\nAcc: "+((settings&&settings.bankAcc)||""))).replace(/\n/g,"<br/>")}</div>`+
-      `<div class="footer">Thank you for your business · ${(settings&&settings.company)||""}</div>`,
-      `Invoice ${inv.doc_no}`
-    );
+      `<div class="footer">Thank you for your business · ${(settings&&settings.company)||""}</div>`,`Invoice ${inv.doc_no}`);
   };
 
-  // Derived filter values — computed before early return is fine (not hooks)
   const calcT=(inv)=>calcDoc(inv.items,inv.discount,inv.tax_rate).total;
-  const filtered=rows.filter(inv=>{
-    if(fClient&&inv.client!==fClient)return false;
-    if(fStatus&&inv.status!==fStatus)return false;
-    if(fMonth&&!(inv.date||"").startsWith(fMonth))return false;
-    return true;
-  });
+  const filtered=rows.filter(inv=>{if(fClient&&inv.client!==fClient)return false;if(fStatus&&inv.status!==fStatus)return false;if(fMonth&&!(inv.date||"").startsWith(fMonth))return false;return true;});
   const fTotal=filtered.reduce((s,inv)=>s+calcT(inv),0);
   const clientList=[...new Set(rows.map(r=>r.client).filter(Boolean))].sort();
   const monthList=[...new Set(rows.map(r=>(r.date||"").slice(0,7)).filter(Boolean))].sort().reverse();
   const hasFilter=fClient||fStatus||fMonth;
 
-  // Early return AFTER all hooks and derived values
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date (auto-calculated)",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
@@ -429,7 +391,6 @@ const save_ = async () => {
   </div>);
 }
 
-// ─── COSTING ──────────────────────────────────────────────────────────────────
 function CostingModule({settings}) {
   const [rows,setRows]=useState([]);
   const [loading,setLoading]=useState(true);
