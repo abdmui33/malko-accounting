@@ -80,7 +80,7 @@ function printDoc(html, title) {
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const C = { bg:"#0f0f1a",card:"#16162a",border:"#2a2a45",gold:"#c9a84c",text:"#e8e8f0",muted:"#7070a0",accent:"#4c6ef5",success:"#40c057",danger:"#fa5252",warning:"#fd7e14" };
-const QSC = { Draft:C.muted,Sent:C.accent,Received:C.success };
+const QSC = { Draft:C.muted,Sent:C.accent,"Success (To Invoice)":C.success,Archive:C.danger };
 const ISC = { Draft:C.muted,"Sent/Pending Payment":C.warning,Received:C.success };
 
 function mkBtn(v="gold") {
@@ -255,7 +255,7 @@ function QuotationModule({settings,onNavigate}) {
 
   // Early return AFTER all hooks
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Quotation":"New Quotation"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Received"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -295,7 +295,7 @@ function QuotationModule({settings,onNavigate}) {
             <td style={css.td}><span style={css.badge(QSC[q.status]||C.muted)}>{q.status||"Draft"}</span></td>
             <td style={css.td}><strong>{fmtMY(calcDoc(q.items,q.discount,q.tax_rate).total)}</strong></td>
             <td style={css.td}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:QSC[q.status]||"#7070a0"}} value={q.status||"Draft"} onChange={e=>{const s=e.target.value;dbUpdate("quotations",q.id,{status:s});setRows(rows.map(r=>r.id===q.id?{...r,status:s}:r));}}>{["Draft","Sent","Received"].map(s=><option key={s}>{s}</option>)}</select>
+              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:QSC[q.status]||"#7070a0"}} value={q.status||"Draft"} onChange={e=>{const s=e.target.value;dbUpdate("quotations",q.id,{status:s});setRows(rows.map(r=>r.id===q.id?{...r,status:s}:r));}}>{["Draft","Sent","Success (To Invoice)","Archive"].map(s=><option key={s}>{s}</option>)}</select>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(q)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printQ(q)}>🖨 PDF</button>
               <button style={{...mkBtn("accent"),padding:"5px 10px",fontSize:11}} onClick={()=>convertToInvoice(q)}>→ INV</button>
