@@ -221,7 +221,7 @@ function QuotationModule({settings,onNavigate}) {
     setEditId(null);setForm(true);
   };
   const openEdit=(r)=>{
-    setDoc({discount:0,tax_rate:0,attn:"",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});
+    setDoc({discount:0,tax_rate:0,attn:"",title:"",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});
     setEditId(r.id);setForm(true);
   };
   const save_=async()=>{
@@ -852,7 +852,7 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
       <div style={css.grid2}>
         <ClientSelect doc={doc} setDoc={setDoc}/>
         {fields.map(f=>(
-          <div key={f.key} style={(f.key==="address"||f.key==="terms"||f.key==="notes")?{gridColumn:"1 / -1"}:{}}>
+          <div key={f.key} style={(f.key==="address"||f.key==="terms"||f.key==="notes"||f.span)?{gridColumn:"1 / -1"}:{}}>
             <label style={css.label}>{f.label}</label>
             {f.type==="select"?
               <select style={css.input} value={doc[f.key]||""} onChange={e=>{const v=e.target.value;setDoc(d=>{const u={...d,[f.key]:v};if(f.key==="payment_terms_days"&&v!=="Custom"&&d.date){try{const dd=new Date(d.date);dd.setDate(dd.getDate()+parseInt(v));u.due_date=dd.toISOString().slice(0,10);}catch(e){}}return u;})}}>{f.options.map(o=><option key={o}>{o}</option>)}</select>
