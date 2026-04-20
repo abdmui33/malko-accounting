@@ -217,7 +217,7 @@ function QuotationModule({settings,onNavigate}) {
   const newItem=()=>({id:uid(),desc:"",qty:1,unit:"unit",price:0});
 
   const openNew=()=>{
-    setDoc({doc_no:rows.length===0?NEXT_QUO:nextDocNo("QUO-",rows),client:"",attn:"",address:"",date:today(),valid_until:"",status:"Draft",notes:"",terms:(settings&&settings.terms_quo)||"",discount:0,tax_rate:0,items:[newItem()]});
+    setDoc({doc_no:rows.length===0?NEXT_QUO:nextDocNo("QUO-",rows),title:"",client:"",attn:"",address:"",date:today(),valid_until:"",status:"Draft",notes:"",terms:(settings&&settings.terms_quo)||"",discount:0,tax_rate:0,items:[newItem()]});
     setEditId(null);setForm(true);
   };
   const openEdit=(r)=>{
@@ -255,7 +255,7 @@ function QuotationModule({settings,onNavigate}) {
 
   // Early return AFTER all hooks
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Quotation":"New Quotation"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -286,9 +286,10 @@ function QuotationModule({settings,onNavigate}) {
     <div style={css.card}>
       {loading?<Spinner/>:rows.length===0?<Empty text="No quotations yet"/>:(
         <div style={{overflowX:"auto"}}><table style={css.table}>
-          <thead><tr>{["No.","Client","Date","Valid Until","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["No.","Title","Client","Date","Valid Until","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
           <tbody>{rows.map(q=><tr key={q.id}>
             <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{q.doc_no}</span></td>
+            <td style={{...css.td,maxWidth:200}}><div style={{fontWeight:600,color:C.text,fontSize:12}}>{q.title||"—"}</div></td>
             <td style={css.td}><div>{q.client}</div>{q.attn&&<div style={{fontSize:11,color:C.muted}}>👤 {q.attn}</div>}</td>
             <td style={css.td}>{fmtDate(q.date)}</td>
             <td style={css.td}>{fmtDate(q.valid_until)}</td>
@@ -335,8 +336,8 @@ function InvoiceModule({settings}) {
 
   const computeDueDate=(base,terms)=>{try{if(!base||!terms||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);}catch(e){return"";}};
 
-  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
-  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
+  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),title:"",client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
+  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",title:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
   const save_=async()=>{
     if(editId){await dbUpdate("invoices",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
     else{const ins=await dbInsert("invoices",doc);if(ins)setRows([ins,...rows]);}
@@ -366,7 +367,7 @@ function InvoiceModule({settings}) {
   const hasFilter=fClient||fStatus||fMonth;
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -415,9 +416,10 @@ function InvoiceModule({settings}) {
     <div style={css.card}>
       {loading?<Spinner/>:rows.length===0?<Empty text="No invoices yet"/>:filtered.length===0?<Empty text="No invoices match filters"/>:(
         <div style={{overflowX:"auto"}}><table style={css.table}>
-          <thead><tr>{["No.","Client","Date","Due","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["No.","Title","Client","Date","Due","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
           <tbody>{filtered.map(inv=><tr key={inv.id}>
             <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{inv.doc_no}</span>{inv.ref_quo&&<div style={{fontSize:10,color:C.muted}}>ref: {inv.ref_quo}</div>}</td>
+            <td style={{...css.td,maxWidth:200}}><div style={{fontWeight:600,color:C.text,fontSize:12}}>{inv.title||"—"}</div></td>
             <td style={css.td}><div>{inv.client}</div>{inv.attn&&<div style={{fontSize:11,color:C.muted}}>👤 {inv.attn}</div>}</td>
             <td style={css.td}>{fmtDate(inv.date)}</td>
             <td style={css.td}>{fmtDate(inv.due_date||computeDueDate(inv.date,inv.payment_terms_days))}</td>
@@ -820,7 +822,7 @@ function Dashboard({settings}) {
         <div style={{fontWeight:700,marginBottom:14,color:C.gold}}>Recent Invoices</div>
         {inv.length===0?<Empty text="No invoices yet"/>:inv.slice(0,6).map(i=>(
           <div key={i.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`,fontSize:13}}>
-            <div><span style={{color:C.gold,fontWeight:700}}>{i.doc_no}</span> · {i.client}</div>
+            <div><span style={{color:C.gold,fontWeight:700}}>{i.doc_no}</span><span style={{color:C.muted,fontSize:12}}> · {i.title||i.client}</span></div>
             <div style={{color:ISC[i.status]||C.muted,fontWeight:600}}>{i.status}</div>
           </div>
         ))}
