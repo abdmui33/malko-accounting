@@ -257,10 +257,31 @@ function QuotationModule({settings,onNavigate}) {
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Quotation":"New Quotation"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
     fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Received"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
+
+  const exportCSV=()=>{
+    if(!rows.length){alert("No quotations to export.");return;}
+    const headers=["Quotation No","Client","Attention","Date","Valid Until","Status","Notes","Subtotal","Discount","Tax Rate","Total"];
+    const csvRows=rows.map(q=>{
+      const {subtotal,discountAmt,taxAmt,total}=calcDoc(q.items,q.discount,q.tax_rate);
+      return [
+        q.doc_no||"",q.client||"",q.attn||"",q.date||"",q.valid_until||"",
+        q.status||"",(q.notes||"").replace(/,/g,";"),
+        subtotal.toFixed(2),discountAmt.toFixed(2),q.tax_rate||0,total.toFixed(2)
+      ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",");
+    });
+    const csv=[headers.map(h=>`"${h}"`).join(","),...csvRows].join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download=`Malko_Quotations_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
       <div><div style={css.pageTitle}>Quotations</div><div style={css.pageSub}>{rows.length} document{rows.length!==1?"s":""}</div></div>
-      <button style={mkBtn("gold")} onClick={openNew}>+ New Quotation</button>
+      <div style={{display:"flex",gap:10}}>
+        <button style={mkBtn("gold")} onClick={openNew}>+ New Quotation</button>
+        <button style={{...mkBtn("ghost"),fontSize:12}} onClick={exportCSV}>⬇ Export CSV</button>
+      </div>
     </div>
     <div style={css.card}>
       {loading?<Spinner/>:rows.length===0?<Empty text="No quotations yet"/>:(
@@ -347,10 +368,34 @@ function InvoiceModule({settings}) {
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
     fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
+
+  const exportCSV=()=>{
+    const data=hasFilter?filtered:rows;
+    if(!data.length){alert("No invoices to export.");return;}
+    const headers=["Invoice No","Client","Attention","Date","Due Date","Payment Terms","Status","Ref Quo","Notes","Subtotal","Discount","Tax Rate","Total"];
+    const csvRows=data.map(inv=>{
+      const {subtotal,discountAmt,taxAmt,total}=calcDoc(inv.items,inv.discount,inv.tax_rate);
+      return [
+        inv.doc_no||"",inv.client||"",inv.attn||"",inv.date||"",
+        inv.due_date||computeDueDate(inv.date,inv.payment_terms_days)||"",
+        inv.payment_terms_days||"",inv.status||"",inv.ref_quo||"",
+        (inv.notes||"").replace(/,/g,";"),
+        subtotal.toFixed(2),discountAmt.toFixed(2),inv.tax_rate||0,total.toFixed(2)
+      ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",");
+    });
+    const csv=[headers.map(h=>`"${h}"`).join(","),...csvRows].join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download=`Malko_Invoices${hasFilter?"_filtered":""}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
       <div><div style={css.pageTitle}>Invoices</div><div style={css.pageSub}>{rows.length} document{rows.length!==1?"s":""}</div></div>
-      <button style={mkBtn("gold")} onClick={openNew}>+ New Invoice</button>
+      <div style={{display:"flex",gap:10}}>
+        <button style={mkBtn("gold")} onClick={openNew}>+ New Invoice</button>
+        <button style={{...mkBtn("ghost"),fontSize:12}} onClick={exportCSV}>⬇ Export CSV</button>
+      </div>
     </div>
     <div style={{...css.card,marginBottom:12,padding:"16px 20px"}}>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
