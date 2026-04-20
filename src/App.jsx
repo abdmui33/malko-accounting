@@ -255,7 +255,7 @@ function QuotationModule({settings,onNavigate}) {
 
   // Early return AFTER all hooks
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Quotation":"New Quotation"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -367,7 +367,7 @@ function InvoiceModule({settings}) {
   const hasFilter=fClient||fStatus||fMonth;
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -866,6 +866,10 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
           </div>
         ))}
       </div>
+    </div>
+    <div style={{...css.card,marginBottom:12}}>
+      <label style={css.label}>Title / Description</label>
+      <input style={css.input} placeholder="e.g. SCaRF Rotary Kiln Installation — Phase 2 Interpretation" value={doc.title||""} onChange={e=>setDoc(d=>({...d,title:e.target.value}))}/>
     </div>
     <div style={css.card}>
       <div style={{fontWeight:700,marginBottom:16,color:C.gold}}>Line Items</div>
