@@ -243,7 +243,7 @@ function QuotationModule({settings,onNavigate}) {
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
     printDoc(
       docHeader(settings,"QUOTATION",q.doc_no,q.date,null,q.client,q.attn,q.address,"")+
-      `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
+      `${q.title?`<div style="background:#f8f6f0;border-left:4px solid #1a1a2e;padding:10px 18px;margin-bottom:20px;font-size:14px;font-weight:700;color:#1a1a2e">${q.title}</div>`:""}<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,q.tax_rate,total)+
       (q.notes?`<div class="note-box"><strong>Notes:</strong> ${q.notes}</div>`:"")+
       (q.terms?`<div class="note-box"><strong>Terms & Conditions:</strong><br/>${q.terms.replace(/\n/g,"<br/>")}</div>`:"")+
@@ -255,7 +255,7 @@ function QuotationModule({settings,onNavigate}) {
 
   // Early return AFTER all hooks
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Quotation":"New Quotation"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Quotation No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"valid_until",label:"Valid Until",type:"date"},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Success (To Invoice)","Archive"]},{key:"notes",label:"Notes / Scope"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -351,7 +351,7 @@ function InvoiceModule({settings}) {
     const resolvedDue=inv.due_date||computeDueDate(inv.date,inv.payment_terms_days);
     const extraMeta=(inv.payment_terms_days?`<div style="margin-top:4px"><span class="meta-label">Payment Terms </span><span class="meta-value">${inv.payment_terms_days}</span></div>`:"")+(inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:"");
     printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,resolvedDue,inv.client,inv.attn||"",inv.address||"",extraMeta)+
-      `<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
+      `${inv.title?`<div style="background:#f8f6f0;border-left:4px solid #1a1a2e;padding:10px 18px;margin-bottom:20px;font-size:14px;font-weight:700;color:#1a1a2e">${inv.title}</div>`:""}<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
       totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+
       (inv.notes?`<div class="note-box"><strong>Notes:</strong> ${inv.notes}</div>`:"")+
       (inv.terms?`<div class="note-box"><strong>Terms & Conditions:</strong><br/>${inv.terms.replace(/\n/g,"<br/>")}</div>`:"")+
@@ -367,7 +367,7 @@ function InvoiceModule({settings}) {
   const hasFilter=fClient||fStatus||fMonth;
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"title",label:"Title / Description",span:true},{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -866,10 +866,6 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
           </div>
         ))}
       </div>
-    </div>
-    <div style={{...css.card,marginBottom:12}}>
-      <label style={css.label}>Title / Description</label>
-      <input style={css.input} placeholder="e.g. SCaRF Rotary Kiln Installation — Phase 2 Interpretation" value={doc.title||""} onChange={e=>setDoc(d=>({...d,title:e.target.value}))}/>
     </div>
     <div style={css.card}>
       <div style={{fontWeight:700,marginBottom:16,color:C.gold}}>Line Items</div>
