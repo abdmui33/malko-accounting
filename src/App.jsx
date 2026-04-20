@@ -81,7 +81,7 @@ function printDoc(html, title) {
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const C = { bg:"#0f0f1a",card:"#16162a",border:"#2a2a45",gold:"#c9a84c",text:"#e8e8f0",muted:"#7070a0",accent:"#4c6ef5",success:"#40c057",danger:"#fa5252",warning:"#fd7e14" };
 const QSC = { Draft:C.muted,Sent:C.accent,Received:C.success };
-const ISC = { Draft:C.muted,Sent:C.accent,Pending:C.warning,Paid:C.success,Overdue:C.danger };
+const ISC = { Draft:C.muted,"Sent/Pending Payment":C.warning,Received:C.success };
 
 function mkBtn(v="gold") {
   return { padding:"9px 20px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700,letterSpacing:.3,transition:"all .15s",
@@ -366,7 +366,7 @@ function InvoiceModule({settings}) {
   const hasFilter=fClient||fStatus||fMonth;
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent","Pending","Paid","Overdue"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -401,7 +401,7 @@ function InvoiceModule({settings}) {
       <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
         <div style={{flex:"1 1 180px"}}><label style={css.label}>Company</label><select style={css.input} value={fClient} onChange={e=>setFClient(e.target.value)}><option value="">All Companies</option>{clientList.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
         <div style={{flex:"1 1 130px"}}><label style={css.label}>Month</label><select style={css.input} value={fMonth} onChange={e=>setFMonth(e.target.value)}><option value="">All Months</option>{monthList.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
-        <div style={{flex:"1 1 130px"}}><label style={css.label}>Status</label><select style={css.input} value={fStatus} onChange={e=>setFStatus(e.target.value)}><option value="">All Statuses</option>{["Draft","Sent","Pending","Paid","Overdue"].map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+        <div style={{flex:"1 1 130px"}}><label style={css.label}>Status</label><select style={css.input} value={fStatus} onChange={e=>setFStatus(e.target.value)}><option value="">All Statuses</option>{["Draft","Sent/Pending Payment","Received"].map(s=><option key={s} value={s}>{s}</option>)}</select></div>
         {hasFilter&&<button style={{...mkBtn("ghost"),padding:"8px 16px",alignSelf:"flex-end"}} onClick={()=>{setFClient("");setFStatus("");setFMonth("");}}>✕ Clear</button>}
       </div>
       {hasFilter&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #2a2a45",display:"flex",gap:24,flexWrap:"wrap",alignItems:"center"}}>
@@ -424,7 +424,7 @@ function InvoiceModule({settings}) {
             <td style={css.td}><span style={css.badge(ISC[inv.status]||C.muted)}>{inv.status}</span></td>
             <td style={css.td}><strong>{fmtMY(calcT(inv))}</strong></td>
             <td style={css.td}><div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:ISC[inv.status]||"#7070a0"}} value={inv.status} onChange={e=>{const s=e.target.value;dbUpdate("invoices",inv.id,{status:s});setRows(rows.map(r=>r.id===inv.id?{...r,status:s}:r));}}>{["Draft","Sent","Pending","Paid","Overdue"].map(s=><option key={s}>{s}</option>)}</select>
+              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:ISC[inv.status]||"#7070a0"}} value={inv.status} onChange={e=>{const s=e.target.value;dbUpdate("invoices",inv.id,{status:s});setRows(rows.map(r=>r.id===inv.id?{...r,status:s}:r));}}>{["Draft","Sent/Pending Payment","Received"].map(s=><option key={s}>{s}</option>)}</select>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(inv)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printI(inv)}>🖨 PDF</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(inv.id)}>✕</button>
@@ -681,7 +681,7 @@ function PLReport() {
   const fi=filt(inv),fs=filt(sup),fsal=filt(sal,"month");
   const totalRev=fi.reduce((s,i)=>s+calcInvT(i),0);
   const totalColl=fi.filter(i=>i.status==="Paid").reduce((s,i)=>s+calcInvT(i),0);
-  const totalOut=fi.filter(i=>["Pending","Sent","Draft"].includes(i.status)).reduce((s,i)=>s+calcInvT(i),0);
+  const totalOut=fi.filter(i=>["Sent/Pending Payment","Draft"].includes(i.status)).reduce((s,i)=>s+calcInvT(i),0);
   const totalSupCost=fs.reduce((s,p)=>s+nf(p.amount),0);
   const totalVendorPend=fs.filter(p=>p.status==="Pending").reduce((s,p)=>s+nf(p.amount),0);
   const totalSalCost=fsal.reduce((s,r)=>s+(nf(r.basic)+nf(r.allowance)+nf(r.overtime)+nf(r.epf_employer)),0);
@@ -806,7 +806,7 @@ function Dashboard({settings}) {
   const cIT=(i)=>{const sub=(i.items||[]).reduce((s,x)=>s+nf(x.qty)*nf(x.price),0);const disc=nf(i.discount);return sub-disc+((sub-disc)*nf(i.tax_rate))/100;};
   const totalRev=inv.reduce((s,i)=>s+cIT(i),0);
   const totalColl=inv.filter(i=>i.status==="Paid").reduce((s,i)=>s+cIT(i),0);
-  const totalOut=inv.filter(i=>["Pending","Sent","Draft"].includes(i.status)).reduce((s,i)=>s+cIT(i),0);
+  const totalOut=inv.filter(i=>["Sent/Pending Payment","Draft"].includes(i.status)).reduce((s,i)=>s+cIT(i),0);
   const vendorPend=sup.filter(p=>p.status==="Pending").reduce((s,p)=>s+nf(p.amount),0);
   return(<div>
     <div style={{marginBottom:28}}><div style={css.pageTitle}>Welcome, {((settings&&settings.company)||"").split(" ")[0]} 👋</div><div style={css.pageSub}>Business overview · live from cloud</div></div>
