@@ -807,7 +807,7 @@ function Dashboard({settings}) {
   const {inv,quo,sup,sal,cos}=data;
   const cIT=(i)=>{const sub=(i.items||[]).reduce((s,x)=>s+nf(x.qty)*nf(x.price),0);const disc=nf(i.discount);return sub-disc+((sub-disc)*nf(i.tax_rate))/100;};
   const totalRev=inv.reduce((s,i)=>s+cIT(i),0);
-  const totalColl=inv.filter(i=>i.status==="Paid").reduce((s,i)=>s+cIT(i),0);
+  const totalColl=inv.filter(i=>i.status==="Received").reduce((s,i)=>s+cIT(i),0);
   const totalOut=inv.filter(i=>["Sent/Pending Payment","Draft"].includes(i.status)).reduce((s,i)=>s+cIT(i),0);
   const vendorPend=sup.filter(p=>p.status==="Pending").reduce((s,p)=>s+nf(p.amount),0);
   return(<div>
