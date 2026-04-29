@@ -300,6 +300,7 @@ function QuotationModule({settings,onNavigate}) {
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(q)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printQ(q)}>🖨 PDF</button>
               <button style={{...mkBtn("accent"),padding:"5px 10px",fontSize:11}} onClick={()=>convertToInvoice(q)}>→ INV</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,color:C.accent,borderColor:C.accent}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(q.id)}>✕</button>
             </div></td>
           </tr>)}</tbody>
@@ -662,6 +663,198 @@ function SalaryModule({settings}) {
   </div>);
 }
 
+
+// ─── DELIVERY ORDERS ──────────────────────────────────────────────────────────
+function DeliveryOrderModule({settings}) {
+  const [rows,setRows]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [form,setForm]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const [doc,setDoc]=useState(null);
+
+  const newItem=()=>({id:uid(),desc:"",qty:1,unit:"unit"});
+
+  useEffect(()=>{
+    dbLoad("delivery_orders").then(d=>{setRows(d);setLoading(false);});
+    const handler=()=>{
+      const raw=sessionStorage.getItem("prefill_do");
+      if(raw){try{
+        const src=JSON.parse(raw);
+        dbLoad("delivery_orders").then(existing=>{
+          setDoc({
+            doc_no:existing.length===0?"DO-001":nextDocNo("DO-",existing),
+            ref_inv:src.source==="INV"?src.doc_no:"",
+            ref_quo:src.source==="QUO"?src.doc_no:"",
+            title:src.title||"",
+            date:today(),
+            client:src.client||"",
+            attn:src.attn||"",
+            delivery_address:src.address||"",
+            items:(src.items||[]).map(i=>({id:uid(),desc:i.desc,qty:i.qty,unit:i.unit})),
+            notes:"",
+            status:"Pending",
+            received_by:"",
+            received_date:"",
+          });
+          setEditId(null);setForm(true);
+          sessionStorage.removeItem("prefill_do");
+        });
+      }catch(e){console.error(e);}}
+    };
+    window.addEventListener("navigate_to_do",handler);
+    return()=>window.removeEventListener("navigate_to_do",handler);
+  },[]);
+
+  const openNew=()=>{setDoc({doc_no:rows.length===0?"DO-001":nextDocNo("DO-",rows),ref_inv:"",ref_quo:"",title:"",date:today(),client:"",attn:"",delivery_address:"",items:[newItem()],notes:"",status:"Pending",received_by:"",received_date:""});setEditId(null);setForm(true);};
+  const openEdit=(r)=>{setDoc({...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
+  const save_=async()=>{
+    if(editId){await dbUpdate("delivery_orders",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
+    else{const ins=await dbInsert("delivery_orders",doc);if(ins)setRows([ins,...rows]);}
+    setForm(false);
+  };
+  const del=async(id)=>{if(!window.confirm("Delete this DO?"))return;await dbDelete("delivery_orders",id);setRows(rows.filter(r=>r.id!==id));};
+
+  const printDO=(d)=>{
+    const items=d.items||[];
+    const trs=items.map((i,idx)=>`<tr><td style="text-align:center">${idx+1}</td><td>${i.desc}</td><td style="text-align:center">${i.qty}</td><td style="text-align:center">${i.unit}</td><td></td></tr>`).join("");
+    const logo=(settings&&settings.logo)?`<img src="${settings.logo}" class="logo" alt="logo"/>`:`<div style="font-size:22px;font-weight:900;color:#1a1a2e">${((settings&&settings.company)||"").slice(0,2).toUpperCase()}</div>`;
+    printDoc(`
+      <div class="header">
+        <div>${logo}</div>
+        <div style="text-align:right">
+          <div class="company-name">${(settings&&settings.company)||""}</div>
+          <div style="color:#666;font-size:12px;line-height:1.7">${(settings&&settings.address)||""}<br/>${(settings&&settings.phone)||""} · ${(settings&&settings.email)||""}<br/>Reg: ${(settings&&settings.regNo)||""}</div>
+        </div>
+      </div>
+      <div class="doc-title">DELIVERY ORDER</div>
+      <div class="meta-grid">
+        <div class="meta-box">
+          <span class="meta-label">Deliver To</span>
+          <div class="meta-value">${d.client||""}</div>
+          ${d.attn?`<div style="color:#666;font-size:12px;margin-top:3px">Attn: ${d.attn}</div>`:""}
+          <div style="color:#666;font-size:12px;margin-top:6px;line-height:1.7"><strong>Delivery Address:</strong><br/>${(d.delivery_address||"").replace(/\n/g,"<br/>")}</div>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">D.O. No.</span><div class="meta-value">${d.doc_no||""}</div>
+          <div style="margin-top:8px"><span class="meta-label">Date </span><span class="meta-value">${fmtDate(d.date)}</span></div>
+          ${d.ref_inv?`<div style="margin-top:4px"><span class="meta-label">Ref Invoice </span><span class="meta-value">${d.ref_inv}</span></div>`:""}
+          ${d.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref Quotation </span><span class="meta-value">${d.ref_quo}</span></div>`:""}
+        </div>
+      </div>
+      ${d.title?`<div style="background:#f8f6f0;border-left:4px solid #1a1a2e;padding:10px 18px;margin-bottom:20px;font-size:14px;font-weight:700;color:#1a1a2e">${d.title}</div>`:""}
+      <table>
+        <thead><tr>
+          <th style="text-align:center;width:40px">#</th>
+          <th>Description of Goods</th>
+          <th style="text-align:center;width:60px">Qty</th>
+          <th style="text-align:center;width:80px">Unit</th>
+          <th style="text-align:center;width:100px">Condition</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+      ${d.notes?`<div class="note-box"><strong>Notes:</strong> ${d.notes}</div>`:""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:8px">Delivered By</div>
+          <div style="border-top:1px solid #333;padding-top:50px;padding-bottom:8px"></div>
+          <div style="font-size:11px;color:#666">Name &amp; Signature</div>
+          <div style="margin-top:12px;font-size:11px;color:#666">Date: _______________________</div>
+          <div style="margin-top:8px;font-size:11px;color:#333;font-weight:700">${(settings&&settings.company)||""}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:8px">Received By</div>
+          <div style="border-top:1px solid #333;padding-top:50px;padding-bottom:8px">${d.received_by?`<div style="font-weight:700">${d.received_by}</div>`:""}</div>
+          <div style="font-size:11px;color:#666">Name &amp; Signature</div>
+          <div style="margin-top:12px;font-size:11px;color:#666">Date: ${d.received_date||"_______________________"}</div>
+          <div style="margin-top:8px;font-size:11px;color:#333;font-weight:700">${d.client||""}</div>
+        </div>
+      </div>
+      <div class="footer">This Delivery Order is computer generated · ${(settings&&settings.company)||""}</div>
+    `, `DO ${d.doc_no}`);
+  };
+
+  const sColor={Pending:C.warning,Delivered:C.success,Returned:C.danger};
+
+  if(form&&doc) return(<div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:24}}>
+      <div style={css.pageTitle}>{editId?"Edit Delivery Order":"New Delivery Order"}</div>
+      <button style={mkBtn("ghost")} onClick={()=>setForm(false)}>← Back</button>
+    </div>
+    <div style={css.card}>
+      <div style={css.grid2}>
+        {[{key:"doc_no",label:"D.O. No."},{key:"date",label:"Date",type:"date"},{key:"ref_inv",label:"Ref: Invoice No."},{key:"ref_quo",label:"Ref: Quotation No."},{key:"client",label:"Client / Recipient Name"},{key:"attn",label:"Attention (Contact Person)"}].map(f=>(
+          <div key={f.key}><label style={css.label}>{f.label}</label><input style={css.input} type={f.type||"text"} value={doc[f.key]??""} onChange={e=>setDoc(d=>({...d,[f.key]:e.target.value}))}/></div>
+        ))}
+        <div style={{gridColumn:"1 / -1"}}><label style={css.label}>Delivery Address</label><textarea style={{...css.input,height:80,resize:"vertical"}} value={doc.delivery_address??""} onChange={e=>setDoc(d=>({...d,delivery_address:e.target.value}))}/></div>
+        <div><label style={css.label}>Status</label><select style={css.input} value={doc.status} onChange={e=>setDoc(d=>({...d,status:e.target.value}))}>{["Pending","Delivered","Returned"].map(o=><option key={o}>{o}</option>)}</select></div>
+      </div>
+    </div>
+    <div style={css.card}>
+      <div style={{fontWeight:700,marginBottom:12,color:C.gold}}>Items</div>
+      <div style={{marginBottom:16}}><label style={css.label}>Title / Description</label><input style={css.input} placeholder="e.g. SCaRF Rotary Kiln — Equipment Delivery" value={doc.title||""} onChange={e=>setDoc(d=>({...d,title:e.target.value}))}/></div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{...css.table,marginBottom:12}}>
+          <thead><tr>
+            <th style={css.th}>Description of Goods</th>
+            <th style={{...css.th,width:80,textAlign:"right"}}>Qty</th>
+            <th style={{...css.th,width:100}}>Unit</th>
+            <th style={{...css.th,width:40}}></th>
+          </tr></thead>
+          <tbody>{(doc.items||[]).map(item=>(
+            <tr key={item.id}>
+              <td style={css.td}><input style={css.input} value={item.desc??""} onChange={e=>setDoc(d=>({...d,items:d.items.map(i=>i.id===item.id?{...i,desc:e.target.value}:i)}))}/></td>
+              <td style={css.td}><input style={{...css.input,textAlign:"right"}} type="number" min="0" value={item.qty??1} onChange={e=>setDoc(d=>({...d,items:d.items.map(i=>i.id===item.id?{...i,qty:e.target.value}:i)}))}/></td>
+              <td style={css.td}><input style={css.input} value={item.unit??""} onChange={e=>setDoc(d=>({...d,items:d.items.map(i=>i.id===item.id?{...i,unit:e.target.value}:i)}))}/></td>
+              <td style={css.td}><button style={{...mkBtn("danger"),padding:"4px 10px",opacity:(doc.items||[]).length<=1?0.3:1}} onClick={()=>{if((doc.items||[]).length<=1)return;setDoc(d=>({...d,items:d.items.filter(i=>i.id!==item.id)}));}}>✕</button></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <button style={{...mkBtn("ghost"),fontSize:12}} onClick={()=>setDoc(d=>({...d,items:[...d.items,newItem()]}))}>+ Add Item</button>
+    </div>
+    <div style={css.card}>
+      <div style={{fontWeight:700,marginBottom:12,color:C.gold}}>Receipt Confirmation</div>
+      <div style={css.grid2}>
+        <div><label style={css.label}>Received By (Name)</label><input style={css.input} value={doc.received_by??""} onChange={e=>setDoc(d=>({...d,received_by:e.target.value}))}/></div>
+        <div><label style={css.label}>Received Date</label><input style={css.input} type="date" value={doc.received_date??""} onChange={e=>setDoc(d=>({...d,received_date:e.target.value}))}/></div>
+        <div style={{gridColumn:"1 / -1"}}><label style={css.label}>Notes</label><input style={css.input} value={doc.notes??""} onChange={e=>setDoc(d=>({...d,notes:e.target.value}))}/></div>
+      </div>
+    </div>
+    <div style={{display:"flex",gap:12}}>
+      <button style={mkBtn("gold")} onClick={save_}>Save D.O.</button>
+      <button style={mkBtn("ghost")} onClick={()=>setForm(false)}>Cancel</button>
+    </div>
+  </div>);
+
+  return(<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+      <div><div style={css.pageTitle}>Delivery Orders</div><div style={css.pageSub}>{rows.length} document{rows.length!==1?"s":""}</div></div>
+      <button style={mkBtn("gold")} onClick={openNew}>+ New D.O.</button>
+    </div>
+    <div style={css.card}>
+      {loading?<Spinner/>:rows.length===0?<Empty text="No delivery orders yet"/>:(
+        <div style={{overflowX:"auto"}}><table style={css.table}>
+          <thead><tr>{["D.O. No.","Title","Client","Date","Ref","Status","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
+          <tbody>{rows.map(d=><tr key={d.id}>
+            <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{d.doc_no}</span></td>
+            <td style={{...css.td,maxWidth:180}}><div style={{fontWeight:600,fontSize:12}}>{d.title||"—"}</div></td>
+            <td style={css.td}><div>{d.client}</div>{d.attn&&<div style={{fontSize:11,color:C.muted}}>👤 {d.attn}</div>}</td>
+            <td style={css.td}>{fmtDate(d.date)}</td>
+            <td style={css.td}><div style={{fontSize:11}}>{d.ref_inv&&<span style={{color:C.accent}}>INV: {d.ref_inv}</span>}{d.ref_quo&&<span style={{color:C.muted}}>QUO: {d.ref_quo}</span>}</div></td>
+            <td style={css.td}><span style={css.badge(sColor[d.status]||C.muted)}>{d.status}</span></td>
+            <td style={css.td}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <select style={{background:"#0f0f1a",border:"1px solid #2a2a45",borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer",color:sColor[d.status]||C.muted}} value={d.status} onChange={e=>{const s=e.target.value;dbUpdate("delivery_orders",d.id,{status:s});setRows(rows.map(r=>r.id===d.id?{...r,status:s}:r));}}>{["Pending","Delivered","Returned"].map(s=><option key={s}>{s}</option>)}</select>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(d)}>Edit</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printDO(d)}>🖨 PDF</button>
+              <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(d.id)}>✕</button>
+            </div></td>
+          </tr>)}</tbody>
+        </table></div>
+      )}
+    </div>
+  </div>);
+}
+
 // ─── P&L REPORT ───────────────────────────────────────────────────────────────
 function PLReport() {
   const [data,setData]=useState(null);
@@ -1006,6 +1199,7 @@ const NAV=[
   {id:"supplier",label:"Supplier Payments",icon:"🏭"},
   {id:"salary",label:"Salary",icon:"👤"},
   {id:"clients",label:"Clients",icon:"◎"},
+  {id:"do",label:"Delivery Orders",icon:"🚚"},
   {id:"pl",label:"P&L Report",icon:"📈"},
   {id:"settings",label:"Settings",icon:"⚙"},
 ];
@@ -1026,6 +1220,10 @@ export default function App() {
 
   useEffect(()=>{
     const handler=()=>setPage("invoice");
+    const doHandler=()=>setPage("do");
+    window.addEventListener("navigate_to_do",doHandler);
+    return()=>{window.removeEventListener("navigate_to_invoice",handler);window.removeEventListener("navigate_to_do",doHandler);};
+  // eslint-disable-next-line
     window.addEventListener("navigate_to_invoice",handler);
     return()=>window.removeEventListener("navigate_to_invoice",handler);
   },[]);
@@ -1075,6 +1273,7 @@ export default function App() {
       {page==="supplier"&&<SupplierModule settings={settings}/>}
       {page==="salary"&&<SalaryModule settings={settings}/>}
       {page==="clients"&&<ClientsModule/>}
+      {page==="do"&&<DeliveryOrderModule settings={settings}/>}
       {page==="pl"&&<PLReport/>}
       {page==="settings"&&<SettingsModule settings={settings} setSettings={setSettings}/>}
     </div>
