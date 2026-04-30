@@ -300,9 +300,8 @@ function QuotationModule({settings,onNavigate}) {
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(q)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printQ(q)}>🖨 PDF</button>
               <button style={{...mkBtn("accent"),padding:"5px 10px",fontSize:11}} onClick={()=>convertToInvoice(q)}>→ INV</button>
-              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,color:C.accent,borderColor:C.accent}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(q.id)}>✕</button>
-              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.__goToDO&&window.__goToDO();}}>🚚 DO</button>
             </div></td>
           </tr>)}</tbody>
         </table></div>
@@ -432,7 +431,7 @@ function InvoiceModule({settings}) {
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(inv)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printI(inv)}>🖨 PDF</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(inv.id)}>✕</button>
-              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...inv,source:"INV"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...inv,source:"INV"}));window.__goToDO&&window.__goToDO();}}>🚚 DO</button>
             </div></td>
           </tr>)}</tbody>
         </table></div>
@@ -676,9 +675,9 @@ function DeliveryOrderModule({settings}) {
 
   useEffect(()=>{
     dbLoad("delivery_orders").then(d=>{setRows(d);setLoading(false);});
-    const handler=()=>{
-      const raw=sessionStorage.getItem("prefill_do");
-      if(!raw) return;
+    // Read prefill from sessionStorage immediately when component mounts
+    const raw=sessionStorage.getItem("prefill_do");
+    if(raw){
       try{
         const src=JSON.parse(raw);
         sessionStorage.removeItem("prefill_do");
@@ -700,9 +699,7 @@ function DeliveryOrderModule({settings}) {
           setForm(true);
         });
       }catch(e){console.error(e);}
-    };
-    window.addEventListener("navigate_to_do",handler);
-    return()=>window.removeEventListener("navigate_to_do",handler);
+    }
   },[]);
 
   const openEdit=(r)=>{setDoc({...r,items:Array.isArray(r.items)&&r.items.length?r.items:[{id:uid(),desc:"",qty:1,unit:"unit"}]});setEditId(r.id);setForm(true);};
@@ -1266,12 +1263,9 @@ export default function App() {
 
   useEffect(()=>{
     const handler=()=>setPage("invoice");
-    const doHandler=()=>setPage("do");
-    window.addEventListener("navigate_to_do",doHandler);
-    return()=>{window.removeEventListener("navigate_to_invoice",handler);window.removeEventListener("navigate_to_do",doHandler);};
-  // eslint-disable-next-line
+    window.__goToDO=()=>setPage("do");
     window.addEventListener("navigate_to_invoice",handler);
-    return()=>window.removeEventListener("navigate_to_invoice",handler);
+    return()=>{window.removeEventListener("navigate_to_invoice",handler);delete window.__goToDO;};
   },[]);
 
   useEffect(()=>{
