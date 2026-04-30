@@ -302,6 +302,7 @@ function QuotationModule({settings,onNavigate}) {
               <button style={{...mkBtn("accent"),padding:"5px 10px",fontSize:11}} onClick={()=>convertToInvoice(q)}>→ INV</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,color:C.accent,borderColor:C.accent}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(q.id)}>✕</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...q,source:"QUO"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
             </div></td>
           </tr>)}</tbody>
         </table></div>
@@ -431,6 +432,7 @@ function InvoiceModule({settings}) {
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>openEdit(inv)}>Edit</button>
               <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11}} onClick={()=>printI(inv)}>🖨 PDF</button>
               <button style={{...mkBtn("danger"),padding:"5px 10px",fontSize:11}} onClick={()=>del(inv.id)}>✕</button>
+              <button style={{...mkBtn("ghost"),padding:"5px 10px",fontSize:11,border:"1px solid #4c6ef5",color:"#4c6ef5"}} onClick={()=>{sessionStorage.setItem("prefill_do",JSON.stringify({...inv,source:"INV"}));window.dispatchEvent(new Event("navigate_to_do"));}}>🚚 DO</button>
             </div></td>
           </tr>)}</tbody>
         </table></div>
