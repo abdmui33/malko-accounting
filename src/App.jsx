@@ -234,7 +234,7 @@ function QuotationModule({settings,onNavigate}) {
   const convertToInvoice=(q)=>{
     const prefill={doc_no:"",client:q.client,attn:q.attn||"",address:q.address||"",date:today(),due_date:"",payment_terms_days:"30 days",status:"Draft",notes:q.notes||"",terms:q.terms||((settings&&settings.terms_inv)||""),ref_quo:q.doc_no,discount:q.discount||0,tax_rate:q.tax_rate||0,items:(q.items||[]).map(i=>({...i,id:uid()}))};
     sessionStorage.setItem("prefill_invoice",JSON.stringify(prefill));
-    onNavigate("invoice");
+    if(window.__prefillInvoice){window.__prefillInvoice();}else{onNavigate("invoice");}
   };
 
   const printQ=(q)=>{
@@ -324,15 +324,25 @@ function InvoiceModule({settings}) {
   const newItem=()=>({id:uid(),desc:"",qty:1,unit:"unit",price:0});
 
   useEffect(()=>{
-    dbLoad("invoices").then(d=>{setRows(d);setLoading(false);});
-    const handler=()=>{
+    // Expose prefillInvoice so convertToInvoice can trigger it even when module is already mounted
+    window.__prefillInvoice=()=>{
       const raw=sessionStorage.getItem("prefill_invoice");
-      if(raw){try{const data=JSON.parse(raw);
-        dbLoad("invoices").then(existing=>{data.doc_no=existing.length===0?NEXT_INV:nextDocNo("INV-",existing);setDoc({discount:0,tax_rate:0,payment_terms_days:"30 days",...data});setEditId(null);setForm(true);sessionStorage.removeItem("prefill_invoice");});
-      }catch(e){console.error(e);}}
+      if(!raw) return;
+      try{
+        const data=JSON.parse(raw);
+        sessionStorage.removeItem("prefill_invoice");
+        dbLoad("invoices").then(existing=>{
+          data.doc_no=existing.length===0?NEXT_INV:nextDocNo("INV-",existing);
+          setDoc({discount:0,tax_rate:0,payment_terms_days:"30 days",...data});
+          setEditId(null);setForm(true);
+        });
+      }catch(e){console.error(e);}
     };
-    window.addEventListener("navigate_to_invoice",handler);
-    return()=>window.removeEventListener("navigate_to_invoice",handler);
+    dbLoad("invoices").then(d=>{setRows(d);setLoading(false);});
+    // Also read sessionStorage on initial mount (e.g. page refresh scenario)
+    const raw=sessionStorage.getItem("prefill_invoice");
+    if(raw){window.__prefillInvoice();}
+    return()=>{delete window.__prefillInvoice;};
   },[]);
 
   const computeDueDate=(base,terms)=>{try{if(!base||!terms||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);}catch(e){return"";}};
