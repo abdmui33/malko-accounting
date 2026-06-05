@@ -347,8 +347,8 @@ function InvoiceModule({settings}) {
 
   const computeDueDate=(base,terms)=>{try{if(!base||!terms||terms==="Custom")return"";const d=new Date(base);d.setDate(d.getDate()+parseInt(terms));return d.toISOString().slice(0,10);}catch(e){return"";}};
 
-  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),title:"",client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
-  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",title:"",payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
+  const openNew=()=>{const base=today();setDoc({doc_no:rows.length===0?NEXT_INV:nextDocNo("INV-",rows),title:"",doc_type:"Invoice",billing_pct:100,client:"",attn:"",address:"",date:base,due_date:computeDueDate(base,"30"),payment_terms_days:"30 days",status:"Draft",ref_quo:"",notes:"",terms:(settings&&settings.terms_inv)||"",discount:0,tax_rate:0,items:[newItem()]});setEditId(null);setForm(true);};
+  const openEdit=(r)=>{setDoc({discount:0,tax_rate:0,attn:"",ref_quo:"",title:"",doc_type:"Invoice",billing_pct:100,payment_terms_days:"30 days",...r,items:Array.isArray(r.items)&&r.items.length?r.items:[newItem()]});setEditId(r.id);setForm(true);};
   const save_=async()=>{
     if(editId){await dbUpdate("invoices",editId,doc);setRows(rows.map(r=>r.id===editId?{...doc,id:editId}:r));}
     else{const ins=await dbInsert("invoices",doc);if(ins)setRows([ins,...rows]);}
@@ -361,9 +361,9 @@ function InvoiceModule({settings}) {
     const trs=items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.desc}</td><td style="text-align:right">${nf(i.qty)}</td><td>${i.unit}</td><td style="text-align:right">${fmtMY(i.price)}</td><td style="text-align:right;font-weight:600">${fmtMY(nf(i.qty)*nf(i.price))}</td></tr>`).join("");
     const resolvedDue=inv.due_date||computeDueDate(inv.date,inv.payment_terms_days);
     const extraMeta=(inv.payment_terms_days?`<div style="margin-top:4px"><span class="meta-label">Payment Terms </span><span class="meta-value">${inv.payment_terms_days}</span></div>`:"")+(inv.ref_quo?`<div style="margin-top:4px"><span class="meta-label">Ref QUO </span><span class="meta-value">${inv.ref_quo}</span></div>`:"");
-    printDoc(docHeader(settings,"INVOICE",inv.doc_no,inv.date,resolvedDue,inv.client,inv.attn||"",inv.address||"",extraMeta)+
+    printDoc(docHeader(settings,(inv.doc_type||"INVOICE").toUpperCase(),inv.doc_no,inv.date,resolvedDue,inv.client,inv.attn||"",inv.address||"",extraMeta)+
       `${inv.title?`<div style="background:#f8f6f0;border-left:4px solid #1a1a2e;padding:10px 18px;margin-bottom:20px;font-size:14px;font-weight:700;color:#1a1a2e">${inv.title}</div>`:""}<table><thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${trs}</tbody></table>`+
-      totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+
+      totalsHtml(subtotal,discountAmt,taxAmt,inv.tax_rate,total)+(inv.billing_pct&&nf(inv.billing_pct)<100?`<div style="margin:0 0 24px;padding:16px 20px;background:#fffbf0;border:2px solid #c9a84c;border-radius:8px"><table style="width:100%;border-collapse:collapse"><tr><td style="padding:6px 0;color:#666;font-size:13px">Contract Value</td><td style="text-align:right;font-size:13px">${fmtMY(total)}</td></tr><tr><td style="padding:6px 0;color:#666;font-size:13px">Billing Percentage</td><td style="text-align:right;font-size:13px">${nf(inv.billing_pct)}%</td></tr><tr style="border-top:2px solid #c9a84c"><td style="padding:10px 0 4px;font-weight:800;font-size:15px;color:#1a1a2e">AMOUNT DUE</td><td style="text-align:right;font-weight:800;font-size:15px;color:#c9a84c;padding-top:10px">${fmtMY(total*nf(inv.billing_pct)/100)}</td></tr></table></div>`:"")+
       (inv.notes?`<div class="note-box"><strong>Notes:</strong> ${inv.notes}</div>`:"")+
       (inv.terms?`<div class="note-box"><strong>Terms & Conditions:</strong><br/>${inv.terms.replace(/\n/g,"<br/>")}</div>`:"")+
       `<div class="note-box"><strong>Payment Details</strong><br/>${((settings&&settings.payment_terms)||("Bank: "+((settings&&settings.bankName)||"")+"\nAcc: "+((settings&&settings.bankAcc)||""))).replace(/\n/g,"<br/>")}</div>`+
@@ -378,7 +378,7 @@ function InvoiceModule({settings}) {
   const hasFilter=fClient||fStatus||fMonth;
 
   if(form&&doc) return <DocForm doc={doc} setDoc={setDoc} title={editId?"Edit Invoice":"New Invoice"} onSave={save_} onCancel={()=>setForm(false)} newItem={newItem} showDiscountTax={true}
-    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
+    fields={[{key:"doc_no",label:"Invoice No."},{key:"client",label:"Client Name"},{key:"attn",label:"Attention (Contact Person)"},{key:"address",label:"Client Address"},{key:"date",label:"Date",type:"date"},{key:"payment_terms_days",label:"Payment Terms",type:"select",options:["7 days","14 days","30 days","60 days","Custom"]},{key:"due_date",label:"Due Date",type:"date"},{key:"doc_type",label:"Document Type",type:"select",options:["Invoice","Proforma Invoice","Tax Invoice"]},{key:"billing_pct",label:"Billing %",type:"number"},{key:"ref_quo",label:"Ref: Quotation No."},{key:"status",label:"Status",type:"select",options:["Draft","Sent/Pending Payment","Received"]},{key:"notes",label:"Notes"},{key:"terms",label:"Terms & Conditions",type:"textarea"}]}/>;
 
 
   const exportCSV=()=>{
@@ -429,7 +429,7 @@ function InvoiceModule({settings}) {
         <div style={{overflowX:"auto"}}><table style={css.table}>
           <thead><tr>{["No.","Title","Client","Date","Due","Status","Total","Actions"].map(h=><th key={h} style={css.th}>{h}</th>)}</tr></thead>
           <tbody>{filtered.map(inv=><tr key={inv.id}>
-            <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{inv.doc_no}</span>{inv.ref_quo&&<div style={{fontSize:10,color:C.muted}}>ref: {inv.ref_quo}</div>}</td>
+            <td style={css.td}><span style={{color:C.gold,fontWeight:700}}>{inv.doc_no}</span><div style={{fontSize:10,color:inv.doc_type==="Proforma Invoice"?C.warning:inv.doc_type==="Tax Invoice"?C.success:C.muted}}>{inv.doc_type||"Invoice"}</div>{inv.ref_quo&&<div style={{fontSize:10,color:C.muted}}>ref: {inv.ref_quo}</div>}</td>
             <td style={{...css.td,maxWidth:200}}><div style={{fontWeight:600,color:C.text,fontSize:12}}>{inv.title||"—"}</div></td>
             <td style={css.td}><div>{inv.client}</div>{inv.attn&&<div style={{fontSize:11,color:C.muted}}>👤 {inv.attn}</div>}</td>
             <td style={css.td}>{fmtDate(inv.date)}</td>
@@ -1159,6 +1159,12 @@ function DocForm({doc,setDoc,title,onSave,onCancel,newItem,fields,showDiscountTa
           <div style={{display:"flex",justifyContent:"space-between",fontSize:17,fontWeight:800,color:C.gold,borderTop:`2px solid ${C.gold}`,paddingTop:10,marginTop:6}}>
             <span>TOTAL</span><span>{fmtMY(total)}</span>
           </div>
+          {doc.billing_pct&&nf(doc.billing_pct)<100&&<>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",fontSize:13,color:C.muted,marginTop:6}}><span>Billing ({doc.billing_pct}%)</span><span>{fmtMY(total*nf(doc.billing_pct)/100)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:800,color:C.warning,borderTop:`2px solid ${C.warning}`,paddingTop:8,marginTop:4}}>
+              <span>AMOUNT DUE</span><span>{fmtMY(total*nf(doc.billing_pct)/100)}</span>
+            </div>
+          </>}
         </div>
       </div>
     </div>
